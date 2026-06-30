@@ -95,3 +95,7 @@ rrn-2025-metropole-shp.zip
 *.pickle
 *.pkl
 
+# Ignorer les modèles d'IA lourds de l'infrastructure
+/infra/models/
+*.safetensors
+*.bin

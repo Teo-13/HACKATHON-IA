@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  ollama-server:
+    image: ollama/ollama:latest
+    container_name: techcorp-ollama-prod
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./models:/models
+      - ./ollama_server:/ollama_server
+    restart: unless-stopped
