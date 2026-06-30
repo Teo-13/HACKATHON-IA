@@ -88,3 +88,5 @@ devweb/
 └── templates/
     └── index.html      # Page HTML de secours
 ```
+
+Voir le livrable complet : [../LIVRABLE.md](../LIVRABLE.md)

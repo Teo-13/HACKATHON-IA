@@ -72,6 +72,7 @@ with st.sidebar:
 
     if online:
         st.success("Connecte")
+        st.info("Le modele peut mettre 30s-2min a repondre. Attends...")
         available_models = list_models(api_url)
     else:
         st.error("Hors ligne")
