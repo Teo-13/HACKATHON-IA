@@ -1,19 +1,15 @@
 import os
 from datetime import datetime
 
-import streamlit as st
+from flask import Flask, jsonify, render_template, request
 
-from api.ollama import chat, chat_stream, is_online, list_models
+from api.ollama import chat, is_online, list_models
 
 DEFAULT_URL = os.getenv("INFERENCE_URL", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("INFERENCE_MODEL", "phi35-financial")
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "20"))
-
-BACKENDS = {
-    "Ollama": "http://localhost:11434",
-    "Triton": "http://localhost:8000",
-    "Custom": DEFAULT_URL,
-}
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "5000"))
 
 EXAMPLES = [
     "Qu'est-ce qu'un ETF ?",
@@ -24,6 +20,8 @@ EXAMPLES = [
 
 WELCOME = "Bienvenue. Posez votre question financiere pour tester le modele Phi-3.5-Financial."
 
+app = Flask(__name__, template_folder="templates")
+
 
 def trim_history(messages: list[dict]) -> list[dict]:
     if len(messages) <= MAX_HISTORY:
@@ -31,95 +29,128 @@ def trim_history(messages: list[dict]) -> list[dict]:
     return messages[-MAX_HISTORY:]
 
 
-def generate_reply(url: str, model: str, messages: list[dict], online: bool, use_stream: bool) -> str:
-    if not online:
-        return "Serveur injoignable. Demandez a l'equipe INFRA l'URL active."
-    history = trim_history([{"role": m["role"], "content": m["content"]} for m in messages])
-    try:
-        if use_stream:
-            tokens: list[str] = []
+def normalize_messages(raw_messages) -> list[dict]:
+    normalized = []
+    if not isinstance(raw_messages, list):
+        return normalized
 
-            def token_generator():
-                for token in chat_stream(url, model, history):
-                    tokens.append(token)
-                    yield token
-
-            st.write_stream(token_generator)
-            return "".join(tokens) or "Reponse vide."
-        reply = chat(url, model, history)
-        st.markdown(reply)
-        return reply
-    except Exception as exc:
-        message = f"Erreur : {exc}"
-        st.markdown(message)
-        return message
+    for message in raw_messages:
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role", "")).strip().lower()
+        content = str(message.get("content", "")).strip()
+        if role not in {"user", "assistant", "system"}:
+            continue
+        if not content:
+            continue
+        normalized.append({"role": role, "content": content})
+    return normalized
 
 
-st.set_page_config(page_title="TechCorp Chat", page_icon="💬", layout="wide")
-st.title("TechCorp Industries")
-st.subheader("Bureau Financier — Interface chat")
-st.caption(f"Session : {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+def resolve_runtime_config(payload: dict) -> tuple[str, str]:
+    api_url = str(payload.get("api_url") or DEFAULT_URL).strip()
+    model = str(payload.get("model") or DEFAULT_MODEL).strip()
+    return api_url, model
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": WELCOME}]
 
-with st.sidebar:
-    st.subheader("Connexion")
-    backend = st.selectbox("Backend", list(BACKENDS.keys()), index=0)
-    default_url = BACKENDS[backend] if backend != "Custom" else DEFAULT_URL
-    api_url = st.text_input("URL serveur", value=default_url)
-    online = is_online(api_url)
-
-    if online:
-        st.success("Connecte")
-        st.info("Le modele peut mettre 30s-2min a repondre. Attends...")
-        available_models = list_models(api_url)
-    else:
-        st.error("Hors ligne")
-        available_models = []
-
-    if available_models:
-        default_index = available_models.index(DEFAULT_MODEL) if DEFAULT_MODEL in available_models else 0
-        model_name = st.selectbox("Modele", available_models, index=default_index)
-    else:
-        model_name = st.text_input("Modele", value=DEFAULT_MODEL)
-
-    use_stream = st.toggle("Reponses en streaming", value=True)
-
-    if st.button("Nouvelle conversation", use_container_width=True):
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Nouvelle session demarree. Posez votre question."}
-        ]
-        st.rerun()
-
-    st.divider()
-    st.caption("Aide")
-    st.markdown(
-        "- API compatible **Ollama** (`/api/chat`)\n"
-        "- URL par defaut Ollama : `localhost:11434`\n"
-        "- URL Triton : `localhost:8000`\n"
-        "- Contactez **INFRA** pour l'URL de production"
+@app.get("/")
+def index():
+    return render_template(
+        "index.html",
+        welcome=WELCOME,
+        examples=EXAMPLES,
+        default_model=DEFAULT_MODEL,
+        default_url=DEFAULT_URL,
+        generated_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
     )
 
-st.markdown("#### Questions rapides")
-cols = st.columns(2)
-for i, question in enumerate(EXAMPLES):
-    with cols[i % 2]:
-        if st.button(question, key=f"q{i}", use_container_width=True):
-            st.session_state.messages.append({"role": "user", "content": question})
-            st.rerun()
 
-st.divider()
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+@app.get("/api/config")
+def api_config():
+    online = is_online(DEFAULT_URL)
+    available_models = list_models(DEFAULT_URL) if online else []
+    return jsonify(
+        {
+            "inference_url": DEFAULT_URL,
+            "default_model": DEFAULT_MODEL,
+            "available_models": available_models,
+            "online": online,
+            "max_history": MAX_HISTORY,
+            "examples": EXAMPLES,
+            "welcome": WELCOME,
+        }
+    )
 
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-    with st.chat_message("assistant"):
-        reply = generate_reply(api_url, model_name, st.session_state.messages, online, use_stream)
-    st.session_state.messages.append({"role": "assistant", "content": reply})
-    st.rerun()
 
-if user_input := st.chat_input("Votre question financiere..."):
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    st.rerun()
+@app.get("/api/status")
+def api_status():
+    api_url = request.args.get("api_url", DEFAULT_URL).strip()
+    online = is_online(api_url)
+    available_models = list_models(api_url) if online else []
+    return jsonify(
+        {
+            "online": online,
+            "api_url": api_url,
+            "available_models": available_models,
+        }
+    )
+
+
+@app.post("/api/chat")
+def api_chat():
+    payload = request.get_json(silent=True) or {}
+    api_url, model = resolve_runtime_config(payload)
+    online = is_online(api_url)
+
+    if not online:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "reply": "Serveur d'inference injoignable. Verifiez l'URL ou contactez l'equipe INFRA.",
+                    "model": model,
+                    "api_url": api_url,
+                }
+            ),
+            503,
+        )
+
+    messages = normalize_messages(payload.get("messages"))
+    if not messages:
+        user_message = str(payload.get("message", "")).strip()
+        if user_message:
+            messages = [{"role": "user", "content": user_message}]
+
+    if not messages:
+        return jsonify({"ok": False, "error": "Aucun message fourni."}), 400
+
+    history = trim_history(messages)
+
+    try:
+        reply = chat(api_url, model, history)
+    except Exception as exc:  # pragma: no cover - runtime/network dependent
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "reply": f"Erreur : {exc}",
+                    "model": model,
+                    "api_url": api_url,
+                }
+            ),
+            500,
+        )
+
+    return jsonify(
+        {
+            "ok": True,
+            "reply": reply,
+            "model": model,
+            "api_url": api_url,
+            "history_size": len(history),
+        }
+    )
+
+
+if __name__ == "__main__":
+    app.run(host=HOST, port=PORT, debug=False)

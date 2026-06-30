@@ -31,6 +31,6 @@ if errorlevel 1 (
 
 echo [3/3] Lancement interface DEV WEB...
 cd ..\devweb
-start http://localhost:8501
+start http://localhost:5000
 python -m pip install -r requirements.txt -q
-python -m streamlit run app.py
+python app.py

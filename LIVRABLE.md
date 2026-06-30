@@ -1,336 +1,237 @@
-# TECHCORP INDUSTRIES — Livrable Hackathon IA
+# TECHCORP INDUSTRIES - Livrable Hackathon IA
 
-**Équipe :** HACKATHON-IA  
-**Projet :** Déploiement de Phi-3.5-Financial avec interface chat  
-**Repo :** [github.com/Teo-13/HACKATHON-IA](https://github.com/Teo-13/HACKATHON-IA)
+Equipe : `HACKATHON-IA`  
+Projet : deploiement du modele `Phi-3.5-Financial` avec interface chat, plus preparation d'un modele medical experimental fine-tune en LoRA  
+Repository : [github.com/Teo-13/HACKATHON-IA](https://github.com/Teo-13/HACKATHON-IA)
 
----
+## 1. Resume executif
 
-## 1. Résumé exécutif
+Le brief demandait deux axes :
 
-TechCorp Industries confie à notre équipe le redéploiement de **Phi-3.5-Financial**, un modèle IA spécialisé finance/business. Notre solution permet à un analyste de poser des questions financières via une **interface web intuitive** connectée à un **serveur d'inférence Docker** (Ollama).
+1. une mission critique de production :
+   deployer **Phi-3.5-Financial** avec une **interface chat web**
+2. une mission experimentale de R&D :
+   preparer un **modele medical fine-tune en LoRA**
 
-| Composant | Technologie | Port |
-|-----------|-------------|------|
-| Serveur INFRA | Docker + Ollama | `11434` |
-| Interface DEV WEB | Streamlit (Python) | `8501` |
-| Modèle | `phi35-financial` (basé sur Phi-3.5) | — |
+Le projet livre :
 
----
+- un serveur d'inference finance cote INFRA, base sur Ollama
+- un site web de chat cote DEV WEB, branche sur l'API d'inference
+- un pipeline DATA complet de nettoyage, audit et export du dataset medical
+- un pipeline IA complet pour le fine-tuning LoRA medical
+- une validation locale reussie du fine-tuning medical sur petit modele CPU
 
-## 2. Architecture globale
+Le chatbot principal du site reste conforme au brief :
+**Phi-3.5-Financial** est le bot de production.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    UTILISATEUR (Analyste)                   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ Navigateur
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  DEV WEB — Interface Streamlit          http://localhost:8501│
-│  • Chat temps réel                                            │
-│  • Historique des échanges                                    │
-│  • Questions exemples en 1 clic                                 │
-│  • Indicateur connecté / hors ligne                           │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ API REST
-                           │ POST /api/chat
-                           │ GET  /api/tags
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  INFRA — Docker Ollama                  http://localhost:11434│
-│  Conteneur : techcorp-ollama-prod                             │
-│  Modèle    : phi35-financial                                  │
-│  Image     : ollama/ollama:latest                             │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phi-3.5-Financial — Modèle IA finance                        │
-│  Spécialisé : investissements, bilan, ETF, conformité        │
-└─────────────────────────────────────────────────────────────┘
+Le modele medical fine-tune reste un livrable experimental :
+il est prepare, teste techniquement, mais non deploye en production.
+
+## 2. Architecture livree
+
+```text
+Utilisateur
+   |
+   v
+Site web Flask (DEV WEB) - http://localhost:5000
+   |
+   v
+API Ollama-compatible
+   |
+   v
+Serveur d'inference Phi-3.5-Financial (INFRA) - http://localhost:11434
+
+En parallele :
+Pipeline DATA/IA medical -> dataset LoRA propre + scripts de fine-tuning experimental
 ```
 
----
+## 3. Livrables par filiere
 
-## 3. Livrables par filière
+### INFRA
 
-### INFRA — L'Architecte du Système
+Objectif du brief :
+deployer un serveur d'inference avec Phi-3.5-Financial et le rendre accessible a l'equipe DEV WEB.
 
-| Exigence | Statut | Preuve |
-|----------|--------|--------|
-| Choisir et déployer un serveur d'inférence | ✅ | Docker Ollama |
-| Modèle Phi-3.5-Financial opérationnel | ✅ | `phi35-financial` |
-| Serveur accessible DEV WEB (URL + port) | ✅ | `http://localhost:11434` |
-| Optimisation paramètres d'inférence | ✅ | Modelfile (temperature, top_p, num_predict) |
-| Documentation de déploiement | ✅ | `infra/README.md` |
+Etat :
+- serveur Ollama prepare
+- configuration Docker livree
+- port d'inference documente
+- configuration de modele documentee
 
-**Choix technique justifié :**
+Fichiers :
+- [infra/docker-compose.yml](/C:/Users/teome/Documents/github/HACKATHON-IA/infra/docker-compose.yml)
+- [infra/ollama_server/Modelfile](/C:/Users/teome/Documents/github/HACKATHON-IA/infra/ollama_server/Modelfile)
+- [infra/start-docker.bat](/C:/Users/teome/Documents/github/HACKATHON-IA/infra/start-docker.bat)
+- [infra/README.md](/C:/Users/teome/Documents/github/HACKATHON-IA/infra/README.md)
 
-- **Ollama** retenu (vs Triton) : déploiement rapide, compatible hackathon 7h, fonctionne CPU/GPU, API simple
-- **Docker** : reproductible sur toutes les machines de l'équipe, config identique en prod
-- **Triton** : disponible en bonus (`infra/tritton_server/Dockerfile`) si GPU NVIDIA
+Sortie attendue :
+- URL inference : `http://localhost:11434`
+- modele : `phi35-financial`
 
-**Fichiers INFRA :**
-```
-infra/
-├── docker-compose.yml       # Orchestration Docker
-├── ollama_server/Modelfile  # Config modèle financier
-├── tritton_server/Dockerfile # Bonus Triton
-├── start-docker.bat         # Lancement Docker
-└── README.md                # Doc technique
-```
+### DEV WEB
 
----
+Objectif du brief :
+fournir une interface web obligatoire pour interagir avec le modele financier.
 
-### DEV WEB — Le Développeur Interface
+Etat :
+- interface web de chat implemente
+- backend web Flask implemente
+- historique, statut serveur, configuration modele/URL et questions rapides disponibles
+- ancien client Streamlit conserve en option, mais le site principal est maintenant le client web Flask
 
-| Exigence | Statut | Preuve |
-|----------|--------|--------|
-| Interface web de chat (obligatoire) | ✅ | `devweb/app.py` |
-| Intégration API serveur INFRA | ✅ | Ollama `/api/chat` |
-| Historique de conversation | ✅ | Session Streamlit |
-| État connexion (connecté / déconnecté) | ✅ | Sidebar + ping `/api/tags` |
-| UI intuitive pour tester le modèle | ✅ | 4 questions exemples + chat |
-| Lancement en 1 commande | ✅ | `lancer-tout.bat` |
+Fichiers :
+- [devweb/app.py](/C:/Users/teome/Documents/github/HACKATHON-IA/devweb/app.py)
+- [devweb/templates/index.html](/C:/Users/teome/Documents/github/HACKATHON-IA/devweb/templates/index.html)
+- [devweb/api/ollama.py](/C:/Users/teome/Documents/github/HACKATHON-IA/devweb/api/ollama.py)
+- [devweb/streamlit_app.py](/C:/Users/teome/Documents/github/HACKATHON-IA/devweb/streamlit_app.py)
+- [devweb/README.md](/C:/Users/teome/Documents/github/HACKATHON-IA/devweb/README.md)
 
-**Fichiers DEV WEB :**
-```
-devweb/
-├── app.py              # Interface Streamlit principale
-├── requirements.txt    # Dépendances Python
-└── templates/index.html # Version HTML de secours
-```
+Lancement principal :
+- `python app.py`
+- ouverture sur `http://localhost:5000`
 
-**Fonctionnalités interface :**
-- Bandeau de connexion (vert = OK, rouge = down)
-- 4 questions financières pré-configurées (ETF, actions/obligations, portefeuille 60/40, bilan)
-- Zone de chat libre en bas de page
-- Bouton « Nouvelle conversation »
-- Configuration URL + nom du modèle dans la sidebar
+### DATA
 
----
+Objectif du brief :
+valider les donnees, nettoyer le dataset medical et preparer les exports pour le fine-tuning LoRA.
 
-### DATA — L'Expert Données
+Etat :
+- recuperation, nettoyage, split et export LoRA termines
+- audit securite des contenus sensibles realise
+- tri automatique affine apres revue d'echantillon
+- rapport de suivi complet redige
+- relecture finale sensible encore ouverte sur l'echantillon v2
 
-| Livrable | Fichier |
-|----------|---------|
-| Scripts récupération données | `data-IA/data/01_recupdata.py` |
-| Nettoyage dataset médical | `data-IA/data/02_nettoyage.py` |
-| Export données | `data-IA/data/03_export.py` |
-| Filtrage qualité | `data-IA/data/04_filtrage.py` |
-| Notebook analyse | `data-IA/data/medical.ipynb` |
+Fichiers principaux :
+- [data-IA/data/journaldata.txt](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/journaldata.txt)
+- [data-IA/data/01_recupdata.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/01_recupdata.py)
+- [data-IA/data/02_nettoyage.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/02_nettoyage.py)
+- [data-IA/data/03_export.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/03_export.py)
+- [data-IA/data/04_filtrage.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/04_filtrage.py)
+- [data-IA/data/06_detection.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/06_detection.py)
+- [data-IA/data/07_automatique.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/07_automatique.py)
+- [data-IA/data/08_echantillon_validation_suppression.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/08_echantillon_validation_suppression.py)
+- [data-IA/data/10_echantillon_a_verifier.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/10_echantillon_a_verifier.py)
 
----
+Resultats DATA :
+- source brute : `256 916` lignes
+- apres nettoyage : `246 492` lignes
+- apres filtrage longueur : `241 661` lignes
+- dataset LoRA exploitable : `241 661` lignes
 
-## 4. Lancement — Guide complet
+Point restant DATA :
+- relire [echantillon_validation_suppression_v2.json](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/data/dataset/revue_securite/tri/echantillon_validation_suppression_v2.json)
+- finaliser la decision humaine sur les `PRIORITE_HAUTE` affines
 
-### Option A — Tout en 1 commande (recommandé)
+### IA
+
+Objectif du brief :
+valider/fine-tuner un modele experimental medical et tester ses performances.
+
+Etat :
+- scripts de fine-tuning et de generation disponibles
+- notebook Colab prepare pour run GPU
+- validation locale du pipeline faite avec succes
+- run local execute sur `distilgpt2` pour preuve technique de la chaine LoRA
+- modele medical de qualite presentable non encore finalise sur GPU Qwen
+
+Fichiers :
+- [data-IA/IA/01_finetune_lora_medical.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/IA/01_finetune_lora_medical.py)
+- [data-IA/IA/02_generate_medical_samples.py](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/IA/02_generate_medical_samples.py)
+- [data-IA/IA/03_finetune_lora_colab.ipynb](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/IA/03_finetune_lora_colab.ipynb)
+- [data-IA/IA/README.md](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/IA/README.md)
+- [data-IA/IA/runs/distilgpt2-medical-local](/C:/Users/teome/Documents/github/HACKATHON-IA/data-IA/IA/runs/distilgpt2-medical-local)
+
+Resultat IA local :
+- train samples : `2000`
+- eval samples : `200`
+- train loss final : `3.666`
+- eval loss final : `3.338`
+- duree : `~28 min` CPU
+
+Conclusion IA :
+- le pipeline fonctionne
+- l'adapter LoRA est bien genere
+- `distilgpt2` n'est pas assez fiable pour un resultat medical credible
+- le run GPU Colab recommande reste `Qwen/Qwen2.5-3B-Instruct`
+
+### CYBER
+
+Objectif du brief :
+verifier la robustesse et l'integrite des reponses/deploiements.
+
+Etat livrable dans ce depot :
+- architecture locale non exposee publiquement
+- backend principal documente et separable du front
+- revue de contenus sensibles realisee cote DATA
+- pas d'audit reseau ou de campagne d'attaque automatisee livre dans ce depot
+
+Point honnete pour le rendu :
+- la composante CYBER est seulement partiellement couverte ici via
+  l'audit de contenu sensible et le choix d'une exposition locale
+
+## 4. Lancement du projet
+
+### Option recommandee
+
+Depuis la racine :
 
 ```powershell
-cd HACKATHON-IA
 .\lancer-tout.bat
 ```
 
-→ Docker INFRA + Interface DEV WEB automatiquement
+Ce script :
+- verifie Docker
+- demarre l'inference finance
+- installe les dependances web si besoin
+- lance le site principal
 
-### Option B — Manuel (2 terminaux)
+Puis ouvrir :
+- `http://localhost:5000`
 
-**Terminal 1 — INFRA :**
+### Lancement manuel
+
+Terminal 1 - INFRA :
+
 ```powershell
-cd HACKATHON-IA\infra
+cd infra
 docker compose up -d
-docker exec techcorp-ollama-prod ollama list
 ```
 
-**Terminal 2 — DEV WEB :**
+Terminal 2 - DEV WEB :
+
 ```powershell
-cd HACKATHON-IA\devweb
+cd devweb
 python -m pip install -r requirements.txt
-python -m streamlit run app.py
+python app.py
 ```
 
-→ Ouvrir **http://localhost:8501**
+## 5. Conformite au brief
 
-### Prérequis
+Conforme :
+- interface chat web obligatoire
+- backend financier principal
+- pipeline data medical
+- fine-tuning LoRA experimental prepare et valide techniquement
 
-| Logiciel | Version | Obligatoire |
-|----------|---------|-------------|
-| Docker Desktop | Dernière | ✅ INFRA |
-| Python | 3.10+ | ✅ DEV WEB |
-| Git | — | Clone du repo |
+Non finalise a 100 % :
+- decision humaine finale sur l'echantillon sensible medical v2
+- vrai run GPU Qwen medical experimental
+- audit complet du dossier `models/phi3_financial/` car absent du depot
+- partie orale non incluse volontairement
 
----
+## 6. Verdict de rendu
 
-## 5. Configuration API
+Ce depot permet de soutenir proprement que :
 
-| Paramètre | Valeur |
-|-----------|--------|
-| **URL serveur** | `http://localhost:11434` |
-| **Modèle** | `phi35-financial` |
-| **Endpoint chat** | `POST /api/chat` |
-| **Endpoint status** | `GET /api/tags` |
-| **Timeout réponse** | 30 s – 2 min (CPU) |
+- la mission critique est couverte :
+  le chatbot principal financier est integrable et launchable sur site web
+- la mission DATA est largement couverte :
+  le dataset medical est nettoye, audite et exporte
+- la mission IA est techniquement couverte :
+  le pipeline LoRA fonctionne et un run local a ete execute
 
-**Exemple requête API :**
-```json
-POST http://localhost:11434/api/chat
-{
-  "model": "phi35-financial",
-  "messages": [
-    {"role": "user", "content": "Qu'est-ce qu'un ETF ?"}
-  ],
-  "stream": false
-}
-```
-
-**Exemple réponse :**
-```json
-{
-  "model": "phi35-financial",
-  "message": {
-    "role": "assistant",
-    "content": "Un ETF (Exchange Traded Fund) est un fonds..."
-  },
-  "done": true
-}
-```
-
----
-
-## 6. Paramètres d'inférence (optimisation)
-
-Configurés dans `infra/ollama_server/Modelfile` :
-
-| Paramètre | Valeur | Rôle |
-|-----------|--------|------|
-| `temperature` | 0.3 | Réponses précises (finance = peu de créativité) |
-| `top_p` | 0.8 | Nucleus sampling |
-| `num_predict` | 256 | Limite tokens = réponses plus rapides |
-
-**System prompt :**
-> Assistant financier TechCorp — finance, investissements, budgeting, trading, conformité business.
-
----
-
-## 7. Tests de validation
-
-### Test INFRA
-```powershell
-curl http://localhost:11434/api/tags
-docker ps --filter name=techcorp
-docker exec techcorp-ollama-prod ollama list
-```
-✅ Attendu : `phi35-financial` listé, conteneur `Up`
-
-### Test DEV WEB
-1. Ouvrir http://localhost:8501
-2. Vérifier sidebar : **Connecté**
-3. Cliquer « Qu'est-ce qu'un ETF ? »
-4. Attendre 30 s – 1 min
-5. ✅ Réponse du modèle dans l'historique
-
-### Questions de démo recommandées
-
-| Question | Thème |
-|----------|-------|
-| Qu'est-ce qu'un ETF ? | Produits financiers |
-| Différence actions / obligations ? | Fondamentaux |
-| Risques portefeuille 60/40 ? | Gestion de risque |
-| Comment lire un bilan comptable ? | Analyse financière |
-| C'est quoi un ERP ? | Systèmes d'entreprise |
-
----
-
-## 8. Présentation orale (5 min)
-
-### Plan suggéré
-
-| Temps | Qui | Contenu |
-|-------|-----|---------|
-| 0:30 | Tous | Contexte TechCorp, mission |
-| 1:00 | INFRA | Docker Ollama, choix technique, démo `docker ps` |
-| 2:00 | DEV WEB | **Démo live** : poser 2 questions, montrer historique |
-| 0:45 | DATA | Dataset médical préparé (bonus) |
-| 0:30 | CYBER | Sécurité API, pas d'exposition publique |
-| 0:15 | Tous | Conclusion |
-
-### Phrase clé DEV WEB
-> « J'ai développé l'interface Streamlit qui communique en temps réel avec le serveur Docker Ollama déployé par INFRA. L'analyste peut tester Phi-3.5-Financial via des questions financières prêtes à l'emploi. »
-
-### Phrase clé INFRA
-> « Nous avons containerisé Phi-3.5-Financial avec Docker et Ollama. Le modèle est accessible sur le port 11434 via une API REST standard. »
-
----
-
-## 9. Structure du repository
-
-```
-HACKATHON-IA/
-├── LIVRABLE.md              ← CE DOCUMENT
-├── lancer-tout.bat          ← Lancement 1-clic
-├── README.md
-├── Brief etudiant HACKATHON IA.pdf
-│
-├── infra/                   ← FILIÈRE INFRA
-│   ├── docker-compose.yml
-│   ├── ollama_server/Modelfile
-│   ├── tritton_server/Dockerfile
-│   ├── start-docker.bat
-│   └── README.md
-│
-├── devweb/                  ← FILIÈRE DEV WEB
-│   ├── app.py
-│   ├── requirements.txt
-│   └── templates/index.html
-│
-└── data-IA/                 ← FILIÈRE DATA
-    ├── data/
-    │   ├── 01_recupdata.py
-    │   ├── 02_nettoyage.py
-    │   ├── 03_export.py
-    │   ├── 04_filtrage.py
-    │   └── medical.ipynb
-    └── requirements.txt
-```
-
----
-
-## 10. Dépannage (troubleshooting)
-
-| Problème | Solution |
-|----------|----------|
-| `Port 11434 already in use` | `docker compose down` puis relancer. Ne pas lancer `infra/server.py` |
-| Sidebar « Hors ligne » | Vérifier Docker : `docker ps` |
-| Pas de réponse / timeout | Attendre 1-2 min (CPU). Ne pas spammer |
-| `Docker not running` | Ouvrir Docker Desktop |
-| Erreur `rendu/devweb` | Utiliser `HACKATHON-IA/devweb` |
-| Modèle introuvable | `docker exec techcorp-ollama-prod ollama create phi35-financial -f /ollama_server/Modelfile` |
-
----
-
-## 11. Sécurité (filière CYBER)
-
-| Point | Statut |
-|-------|--------|
-| Serveur local uniquement (`localhost`) | ✅ |
-| Pas d'exposition Internet | ✅ |
-| API sans authentification (environnement hackathon) | ⚠️ Acceptable en local |
-| Données sensibles dans le chat | ⚠️ Ne pas saisir de données réelles |
-
----
-
-## 12. Améliorations futures
-
-- [ ] Streaming des réponses (mot par mot)
-- [ ] Authentification utilisateur
-- [ ] Déploiement cloud (Azure/AWS)
-- [ ] Triton Inference Server en production GPU
-- [ ] Fine-tuning LoRA modèle médical (DATA + IA)
-- [ ] CI/CD GitHub Actions
-
----
-
-**TechCorp Industries compte sur nous. Mission accomplie.**
-
-*Document généré pour le Hackathon IA — YNOV 2026*
+Statut final defendable :
+- **production finance : livrable**
+- **data medical : quasi livrable**
+- **ia medicale : prete operationnellement, mais encore experimentale**

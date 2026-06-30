@@ -1,0 +1,109 @@
+CONSIGNES POUR L'IA ASSISTANTE (VS CODE) - PARTIE DATA
+=========================================================
+
+Contexte : projet TechCorp, dataset medical pour fine-tuning LoRA.
+Tous les scripts numerotes (01 a 08) sont deja ecrits et fonctionnels
+dans le dossier du projet. Les etapes 1 a 7 ont deja ete executees.
+Cette IA doit prendre le relais a partir de l'etape 8.
+
+Lire d'abord journal_data.txt pour le contexte complet de ce qui a
+deja ete fait avant de commencer.
+
+
+TACHE 1 - ANALYSER L'ECHANTILLON DE VALIDATION
+------------------------------------------------
+Fichier : dataset/revue_securite/tri/echantillon_validation_suppression.json
+
+Pour chacune des 25 lignes, lire "question_patient" et "reponse_medecin"
+et remplir les champs vides :
+  - "verdict" : "CONFIRME_A_SUPPRIMER" si la reponse medicale ne traite
+    pas correctement un risque suicidaire/d'automutilation reel (pas
+    d'orientation vers urgence/professionnel/hotline)
+                ou "FAUX_POSITIF_GARDER" si en fait il n'y a pas de
+    risque reel, ou si la reponse est deja adequate
+  - "commentaire" : une phrase expliquant le choix
+
+Sauvegarder le fichier mis a jour au meme endroit.
+
+
+TACHE 2 - DECISION ET SUPPRESSION FINALE
+------------------------------------------
+Une fois la tache 1 terminee, compter le ratio CONFIRME_A_SUPPRIMER
+vs FAUX_POSITIF_GARDER dans l'echantillon.
+
+SI le ratio de CONFIRME_A_SUPPRIMER est superieur a 70% :
+  - Ecrire un script Python "09_suppression_finale.py" qui :
+    1. Charge les fichiers train/validation/test_lora.jsonl
+       (dossier data/export_lora/)
+    2. Charge les listes de lignes PRIORITE_HAUTE deja identifiees
+       (dossier dataset/revue_securite/tri/*_priorite_haute.json)
+    3. Retire ces lignes des fichiers *_lora.jsonl en se basant sur
+       une correspondance exacte sur les champs "input" et "output"
+    4. Sauvegarde les fichiers finaux nettoyes (ecraser ou versionner
+       avec un suffixe _final)
+    5. Affiche un resume avant/apres (nombre de lignes par split)
+  - Executer ce script
+
+SI le ratio est inferieur a 70% :
+  - Ne pas supprimer automatiquement. Signaler a l'utilisateur que
+    le filtre automatique genere trop de faux positifs et qu'il faut
+    une relecture plus fine (proposer d'affiner les patterns du
+    script 07_tri_automatique_securite.py).
+
+
+TACHE 3 - SONDAGE DE LA CATEGORIE "A_VERIFIER"
+------------------------------------------------
+Dossier : dataset/revue_securite/tri/*_a_verifier.json (523 lignes total)
+
+Tirer un echantillon aleatoire de 20 lignes (seed=42, meme logique que
+les scripts precedents) parmi ces 523 lignes, toutes splits confondus.
+Les afficher avec leurs champs verdict/commentaire vides, dans un
+nouveau fichier "echantillon_a_verifier.json", pour relecture manuelle
+par l'humain. NE PAS remplir les verdicts soi-meme pour cette tache :
+cette categorie touche a des cas sensibles ou le jugement humain est
+necessaire en dernier ressort.
+
+
+TACHE 4 - MISE A JOUR DU RAPPORT DE QUALITE
+------------------------------------------------
+Une fois la tache 2 terminee (suppression effectuee ou non), mettre a
+jour le fichier journal_data.txt :
+  - Ajouter une section "ETAPE 9 - SUPPRESSION FINALE DES CAS A RISQUE"
+    avec les chiffres avant/apres
+  - Mettre a jour la section "RECAPITULATIF POUR LE RAPPORT DE QUALITE"
+    avec le nombre final de lignes du dataset
+  - Ne PAS toucher aux sections deja ecrites (etapes 1 a 8), uniquement
+    ajouter a la suite
+
+
+TACHE 5 - VALIDATION DES DONNEES PHI-3.5-FINANCIAL (si le dossier existe)
+------------------------------------------------
+Verifier si un dossier models/phi3_financial/ existe dans le projet
+(fichier herite de l'equipe precedente, mentionne dans le brief).
+
+Si oui :
+  - Lister son contenu (config, donnees d'entrainement eventuelles,
+    poids du modele)
+  - Si des donnees d'entrainement ou des exemples de prompts sont
+    presents, appliquer le meme type d'audit que pour le dataset
+    medical : doublons, valeurs manquantes, contenu suspect
+    (recherche de patterns d'injection de prompt, instructions
+    cachees, contenu hors-sujet pour un modele finance/business)
+  - Generer un rapport similaire a etat_des_lieux.json
+
+Si non : noter dans journal_data.txt que le dossier n'a pas ete trouve
+et qu'il faut verifier avec l'equipe INFRA ou se trouve le modele.
+
+
+REGLES GENERALES POUR CETTE IA
+------------------------------------------------
+- Ne jamais supprimer ou modifier les fichiers data/raw_*.json (copie
+  brute originale, a conserver intacte comme preuve de tracabilite)
+- Toujours travailler sur des copies / nouveaux fichiers plutot que
+  d'ecraser un fichier intermediaire dont on pourrait avoir besoin
+- Pour toute decision impliquant un jugement medical ou ethique
+  (ex : garder ou supprimer une conversation sur le suicide), signaler
+  clairement le choix fait et pourquoi, ne jamais decider silencieusement
+- Si un script plante a cause d'un chemin de fichier, verifier d'abord
+  le repertoire de travail courant (cwd) avant de modifier le code
+- Tenir journal_data.txt a jour a chaque etape terminee

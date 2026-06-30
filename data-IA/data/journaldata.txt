@@ -1,0 +1,302 @@
+TECHCORP - CHALLENGE IA - JOURNAL DE BORD PARTIE DATA
+========================================================
+
+Objectif : preparer et valider le dataset medical pour le fine-tuning LoRA
+Source : huggingface.co/datasets/ruslanmv/ai-medical-chatbot
+
+
+ETAPE 1 - RECUPERATION DES DONNEES (script 01_recuperation_donnees.py)
+------------------------------------------------------------------------
+- Telechargement du dataset brut depuis HuggingFace
+- Sauvegarde locale (JSON + CSV) dans data/raw_*.json pour tracabilite
+- Premier etat des lieux : colonnes, valeurs manquantes, doublons
+- Resultat : 256 916 lignes brutes, colonnes "Patient", "Doctor", "Description"
+
+
+ETAPE 2 - NETTOYAGE ET DETECTION D'ANOMALIES (script 02_nettoyage.py)
+------------------------------------------------------------------------
+- Detection automatique des colonnes (Patient -> input, Doctor -> output,
+  Description -> contexte)
+- Normalisation du texte (espaces multiples, balises HTML residuelles)
+- Detection d'anomalies de securite : recherche de mots-cles suspects
+  (tentatives d'injection de prompt, balises script, etc.)
+- Suppression des doublons stricts
+- Suppression des lignes vides ou trop courtes (< 5 caracteres)
+- Renommage au format standard instruction / output
+- Split train/validation/test (80/10/10)
+
+Resultat : 256 916 -> 246 492 lignes (10 424 supprimees)
+47 anomalies signalees, toutes verifiees manuellement :
+  - majorite : artefacts "output trop court" deja elimines par le filtre
+  - 1 cas "http://" : URL legitime citee par un medecin, pas une injection
+  - AUCUNE trace d'injection de prompt ou de contenu malveillant detectee
+  sur l'ensemble du dataset (256 916 lignes)
+
+Splits generes :
+  train      : 197 193 lignes
+  validation : 24 649 lignes
+  test       : 24 650 lignes
+
+
+ETAPE 3 - STATISTIQUES DESCRIPTIVES + EXPORT LORA (script 03_stats_et_export.py)
+------------------------------------------------------------------------
+- Calcul des longueurs moyennes/min/max (en mots) par split
+- Extraction des themes/mots les plus frequents dans les questions patients
+- Export au format LoRA style Alpaca (instruction / input / output) en JSONL
+
+Probleme detecte : minimums a 1 mot (filtre initial en caracteres, pas en
+mots) et maximums tres eleves (jusqu'a 3672 mots), risque de troncature
+brutale ou de surcharge memoire pendant le fine-tuning.
+
+
+ETAPE 4 - FILTRAGE DES OUTLIERS DE LONGUEUR (script 04_filtrage_longueur.py)
+------------------------------------------------------------------------
+- Choix : suppression des outliers plutot que troncature, pour ne pas
+  casser la coherence question/reponse medicale
+- Seuils calcules sur le train (percentile 99), appliques aux 3 splits
+  pour rester coherent :
+    instruction <= 301 mots
+    output      <= 265 mots
+    minimum commun >= 4 mots
+
+Resultat final :
+  train      : 197 193 -> 193 332 lignes (3 861 supprimees)
+  validation : 24 649  -> 24 181 lignes  (468 supprimees)
+  test       : 24 650  -> 24 148 lignes  (502 supprimees)
+
+Total final : 241 661 lignes propres, pretes pour le fine-tuning LoRA
+Fichiers : data/export_lora/{train,validation,test}_lora.jsonl
+
+
+RECAPITULATIF POUR LE RAPPORT DE QUALITE
+------------------------------------------------------------------------
+1. Source            : 256 916 lignes brutes
+2. Apres nettoyage    : 246 492 lignes (doublons + entrees vides supprimes)
+3. Audit securite     : 0 trace d'injection/contenu malveillant detectee
+4. Apres filtrage     : 241 661 lignes (outliers de longueur supprimes)
+5. Format final       : JSONL Alpaca-style (instruction/input/output)
+6. Repartition        : 80% train / 10% validation / 10% test
+
+
+ETAPE 5 - RELECTURE QUALITATIVE MANUELLE (script 05_echantillon_relecture.py)
+------------------------------------------------------------------------
+- Extraction d'un echantillon aleatoire de 30 paires question/reponse
+  (train) pour validation manuelle, en plus des filtres automatiques
+- Grille de lecture : OK / A_REVOIR / PROBLEME
+
+Resultat de la relecture (30 lignes) :
+  - 25 lignes OK (reponses coherentes et pertinentes)
+  - 3 lignes A_REVOIR (reponses trop legeres face a des signaux d'alerte
+    medicaux : cancer metastatique + ayurveda sans mise en garde,
+    depression sans evaluation du risque, perte de poids + vomissements
+    sans bilan approfondi recommande)
+  - 2 lignes PROBLEME :
+      #27 : reponse sans valeur medicale ("You call when your gut
+            feelings tell you, too!")
+      #29 : CRITIQUE - patient exprimant des idees suicidaires actives,
+            reponse qui minimise le risque sans orienter vers une
+            ressource d'urgence
+
+
+ETAPE 6 - DETECTION CONTENU SENSIBLE SUR L'ENSEMBLE DU DATASET
+(script 06_detection_contenu_sensible.py)
+------------------------------------------------------------------------
+- Suite au cas #29, scan complet des 241 661 lignes (et non plus
+  seulement l'echantillon) a la recherche de mots-cles lies au
+  suicide / automutilation (input ET output)
+
+Resultat :
+  train      : 765 / 193 332 lignes (0.40%)
+  validation : 90 / 24 181 lignes (0.37%)
+  test       : 110 / 24 148 lignes (0.46%)
+  Total      : 965 lignes signalees pour revue
+
+
+ETAPE 7 - TRI AUTOMATIQUE DES LIGNES SENSIBLES
+(script 07_tri_automatique_securite.py)
+------------------------------------------------------------------------
+- Filtrage des faux positifs evidents (expressions figees type "die of
+  embarrassment", "dying my hair", etc.)
+- Classification des cas restants selon que la reponse du medecin
+  oriente deja vers de l'aide (urgence, hotline, professionnel de sante)
+
+Resultat :
+  PRIORITE_HAUTE (risque reel, aucune orientation vers de l'aide) :
+    train: 356 / validation: 41 / test: 44 -> 441 lignes au total
+  A_VERIFIER (risque reel, orientation detectee, a confirmer) :
+    train: 408 / validation: 49 / test: 66 -> 523 lignes au total
+  FAUX_POSITIF_AUTO : 1 ligne
+
+
+ETAPE 8 - VALIDATION PAR ECHANTILLON AVANT SUPPRESSION
+(script 08_echantillon_validation_suppression.py)
+------------------------------------------------------------------------
+- Echantillon de 25 lignes tirees de PRIORITE_HAUTE (tous splits
+  confondus) pour validation manuelle avant decision finale
+- Decision : si la majorite des 25 lignes confirme un vrai risque non
+  traite -> suppression de toute la categorie PRIORITE_HAUTE (441 lignes)
+  du dataset final de fine-tuning, par precaution
+- STATUT : premier echantillon relu, puis tri automatique affine a
+  l'etape 12. L'echantillon de reference a relire pour la decision
+  finale est desormais echantillon_validation_suppression_v2.json.
+
+
+POINT D'ETAPE INTERMEDIAIRE
+------------------------------------------------------------------------
+- Cette section a ete depassee par les etapes 9 a 13 ci-dessous.
+- Le dataset medical est prepare et exploitable pour le fine-tuning LoRA.
+- La relecture finale des cas sensibles reste ouverte sur l'echantillon v2.
+- La partie IA n'est plus "pas commencee" : un fine-tuning local de
+  validation a ete execute a l'etape 13.
+
+
+ETAPE 9 - DECISION INTERMEDIAIRE SUR LES CAS A RISQUE
+------------------------------------------------------------------------
+- Fichier relu : dataset/revue_securite/tri/echantillon_validation_suppression.json
+- Resultat de la relecture manuelle de l'echantillon PRIORITE_HAUTE :
+    CONFIRME_A_SUPPRIMER : 8 / 25
+    FAUX_POSITIF_GARDER  : 17 / 25
+    Ratio confirme       : 32.0%
+- Decision intermediaire : NE PAS supprimer automatiquement les 441 lignes
+  PRIORITE_HAUTE de la version initiale du tri, car le ratio de vrais cas
+  a retirer est largement inferieur au seuil de 70%.
+- Lecture des faux positifs observes dans l'echantillon :
+    1. mentions historiques ou explicitement niees de suicidalite
+    2. mots-cles presents uniquement dans la reponse du medecin
+    3. expressions de peur de mourir sans intention auto-agressive
+    4. formulations de detresse non structurees, a confirmer au cas par cas
+- Action recommandee : affiner les patterns du script
+  07_tri_automatique_securite.py avant toute suppression massive.
+
+Etat du dataset LoRA apres decision :
+  train      : 193 332 lignes
+  validation : 24 181 lignes
+  test       : 24 148 lignes
+  Total final: 241 661 lignes
+
+
+ETAPE 10 - SONDAGE DE LA CATEGORIE A_VERIFIER
+------------------------------------------------------------------------
+- Echantillon aleatoire de 20 lignes tire parmi les 523 cas A_VERIFIER
+  (seed=42, tous splits confondus)
+- Fichier genere : dataset/revue_securite/tri/echantillon_a_verifier.json
+- Les champs verdict/commentaire sont volontairement laisses vides
+  pour relecture humaine finale sur ces cas sensibles.
+
+
+MISE A JOUR - RECAPITULATIF POUR LE RAPPORT DE QUALITE
+------------------------------------------------------------------------
+7. Validation risque  : 25 cas relus, 32.0% confirmes a supprimer
+8. Decision intermediaire : aucune suppression automatique des 441 cas
+                            PRIORITE_HAUTE de la premiere version du tri
+9. Dataset final      : 241 661 lignes conservees pour le fine-tuning
+                        LoRA (193 332 train / 24 181 validation /
+                        24 148 test)
+
+
+ETAPE 11 - VERIFICATION PHI-3.5-FINANCIAL
+------------------------------------------------------------------------
+- Dossier models/phi3_financial/ introuvable dans le projet local.
+- Aucun poids, prompt d'entrainement ou configuration heritee n'a pu
+  etre audite dans ce depot.
+- A verifier avec l'equipe INFRA ou sur une autre machine afin de
+  localiser le modele et les donnees associees.
+
+
+ETAPE 12 - AFFINAGE DU TRI AUTOMATIQUE DES CAS SENSIBLES
+------------------------------------------------------------------------
+- Suite a la relecture de l'echantillon de l'etape 9, le script
+  07_tri_automatique_securite.py a ete renforce pour mieux filtrer :
+    1. les cas detectes uniquement dans la reponse du medecin
+    2. les mentions historiques/resolues de suicidalite
+    3. les peurs de mourir sans intention auto-agressive
+    4. les negations explicites de blessure auto-infligee
+    5. les deuils lies au suicide d'un proche
+    6. les reponses orientant deja vers psychiatre/psychologue/therapie
+- Le script a aussi ete fiabilise sur les chemins de fichiers
+  (execution possible depuis n'importe quel cwd).
+
+Nouveaux resultats apres re-execution du tri :
+  PRIORITE_HAUTE :
+    train: 196 / validation: 22 / test: 26 -> 244 lignes
+  A_VERIFIER :
+    train: 422 / validation: 49 / test: 62 -> 533 lignes
+  FAUX_POSITIF_AUTO :
+    train: 147 / validation: 19 / test: 22 -> 188 lignes
+
+Impact par rapport a la version precedente :
+  - PRIORITE_HAUTE : 441 -> 244 (-197)
+  - A_VERIFIER     : 523 -> 533 (+10)
+  - FAUX_POSITIF   : 1   -> 188 (+187)
+
+Fichiers de suivi regeneres :
+  - dataset/revue_securite/tri/rapport_tri.json
+  - dataset/revue_securite/tri/echantillon_a_verifier.json
+  - dataset/revue_securite/tri/echantillon_validation_suppression_v2.json
+
+Note : la revue manuelle de suppression definitive doit desormais se
+faire sur l'echantillon v2, aligne sur ce tri automatique affine.
+
+
+ETAPE 13 - VALIDATION IA LOCALE PAR FINE-TUNING LoRA
+------------------------------------------------------------------------
+- Environnement : machine locale CPU (sans CUDA/NVIDIA), venv projet
+  data-IA/.venv
+- Objectif : valider de bout en bout la chaine de fine-tuning LoRA
+  avant un run GPU plus ambitieux sur Colab
+- Scripts prepares/corriges :
+    1. IA/01_finetune_lora_medical.py
+    2. IA/02_generate_medical_samples.py
+    3. IA/03_finetune_lora_colab.ipynb
+- Run execute localement :
+    modele        : distilgpt2
+    train samples : 2000
+    eval samples  : 200
+    epochs        : 1
+    sortie        : IA/runs/distilgpt2-medical-local/
+
+Resultats du run local :
+  - train_loss final             : 3.666
+  - eval_loss final              : 3.338
+  - eval_mean_token_accuracy     : 0.3969
+  - duree approximative          : 28 minutes sur CPU
+
+Conclusion IA locale :
+  - Le pipeline de fine-tuning fonctionne correctement en local
+  - L'adapter LoRA a bien ete genere et recharge avec succes
+  - La qualite conversationnelle reste insuffisante pour un rendu
+    medical credible avec distilgpt2 (repetitions, fiabilite faible)
+  - Ce run local sert donc de validation technique, pas de resultat
+    final presentable cote modele
+
+Recommandation :
+  - Pour un vrai resultat, lancer un run GPU Colab sur
+    Qwen/Qwen2.5-3B-Instruct avec le notebook/scripting prepares
+    dans le dossier IA/
+
+
+STATUT GLOBAL POUR LE RENDU
+------------------------------------------------------------------------
+PARTIE DATA :
+  - Quasi terminee
+  - Nettoyage, export LoRA, audit securite et affinage du tri sont faits
+  - Dataset exploitable disponible : 241 661 lignes
+  - Point restant : relecture humaine finale de
+    dataset/revue_securite/tri/echantillon_validation_suppression_v2.json
+    pour conclure definitivement sur une suppression eventuelle des cas
+    PRIORITE_HAUTE affines
+  - Point bloque externe : dossier models/phi3_financial/ absent du depot
+
+PARTIE IA :
+  - Demarree et validee techniquement
+  - Fine-tuning LoRA local execute avec succes sur un petit modele
+  - Scripts locaux + notebook Colab prets
+  - Point restant pour un resultat convaincant : lancer le run GPU
+    Qwen/Qwen2.5-3B-Instruct puis evaluer les generations
+
+Verdict global :
+  - La partie DATA peut etre consideree comme livrable avec une reserve
+    sur la revue sensible finale
+  - La partie IA est prete operationnellement, mais pas finalisee tant
+    que le run GPU sur un modele instruction-tuned plus adapte n'a pas
+    ete execute et evalue

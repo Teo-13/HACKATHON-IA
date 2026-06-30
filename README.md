@@ -1,6 +1,6 @@
-# HACKATHON-IA — TechCorp Phi-3.5-Financial
+# HACKATHON-IA - TechCorp Phi-3.5-Financial
 
-Déploiement du modèle **Phi-3.5-Financial** avec interface chat.
+Deploiement du modele **Phi-3.5-Financial** avec interface chat web, plus pipeline experimental de fine-tuning LoRA medical.
 
 ## Lancement rapide
 
@@ -8,21 +8,28 @@ Déploiement du modèle **Phi-3.5-Financial** avec interface chat.
 .\lancer-tout.bat
 ```
 
-→ http://localhost:8501
+Puis ouvrir :
 
-## Documentation complète
+`http://localhost:5000`
 
-Voir **[LIVRABLE.md](LIVRABLE.md)** — document principal du projet.
+## Documentation complete
+
+Voir [LIVRABLE.md](LIVRABLE.md), document principal du rendu.
 
 ## Structure
 
-| Dossier | Filière | Description |
+| Dossier | Filiere | Description |
 |---------|---------|-------------|
-| `infra/` | INFRA | Docker Ollama, port 11434 |
-| `devweb/` | DEV WEB | Interface Streamlit, port 8501 |
-| `data-IA/` | DATA | Scripts dataset médical |
+| `infra/` | INFRA | Serveur d'inference Ollama et Docker |
+| `devweb/` | DEV WEB | Site web de chat + client Streamlit optionnel |
+| `data-IA/` | DATA / IA | Pipeline dataset medical + scripts LoRA |
 
-## API
+## Modele principal du site
 
-- URL : `http://localhost:11434`
-- Modèle : `phi35-financial`
+- URL inference : `http://localhost:11434`
+- modele principal : `phi35-financial`
+
+## Modele medical experimental
+
+Le modele medical fine-tune n'est pas le chatbot principal du site.
+Il reste un livrable de R&D, conforme au brief.

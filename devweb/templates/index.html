@@ -4,14 +4,698 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TechCorp - Interface chat</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: rgba(255, 250, 240, 0.88);
+      --panel-strong: #fff9ee;
+      --text: #1f2a2e;
+      --muted: #5f6e73;
+      --line: rgba(31, 42, 46, 0.12);
+      --accent: #0b5d5c;
+      --accent-soft: #d7efea;
+      --warning: #a35f00;
+      --danger: #8f2f39;
+      --shadow: 0 18px 55px rgba(31, 42, 46, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(11, 93, 92, 0.16), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(163, 95, 0, 0.16), transparent 24%),
+        linear-gradient(135deg, #f6f0e5 0%, #eef5f2 100%);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+      width: min(1400px, calc(100vw - 32px));
+      margin: 24px auto;
+      align-items: start;
+    }
+
+    .sidebar,
+    .main-panel {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      padding: 22px;
+      position: sticky;
+      top: 24px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 22px;
+    }
+
+    .brand-kicker {
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.05;
+    }
+
+    .brand p,
+    .meta,
+    .helper {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .status-card,
+    .settings-card,
+    .examples-card,
+    .helper-card {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .card-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .status-pill.offline {
+      background: rgba(143, 47, 57, 0.12);
+      color: var(--danger);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 12px 14px;
+      color: var(--text);
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: #0a4f4f;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .secondary-button {
+      width: 100%;
+      margin-top: 12px;
+      background: #dfe8e7;
+      color: var(--text);
+    }
+
+    .examples-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .example-button {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .main-panel {
+      min-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(11, 93, 92, 0.08), rgba(163, 95, 0, 0.04)),
+        var(--panel);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.55;
+    }
+
+    .hero-meta {
+      text-align: right;
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      animation: rise 180ms ease;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .message.assistant .avatar {
+      background: rgba(11, 93, 92, 0.14);
+      color: var(--accent);
+    }
+
+    .message.user .avatar {
+      background: rgba(163, 95, 0, 0.12);
+      color: var(--warning);
+    }
+
+    .bubble {
+      max-width: min(760px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      box-shadow: 0 10px 30px rgba(31, 42, 46, 0.06);
+    }
+
+    .message.assistant .bubble {
+      border-top-left-radius: 6px;
+    }
+
+    .message.user .bubble {
+      border-top-right-radius: 6px;
+      background: #fffdf8;
+    }
+
+    .composer {
+      padding: 18px 22px 22px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .composer-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 140px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .composer textarea {
+      width: 100%;
+      min-height: 70px;
+      max-height: 220px;
+      resize: vertical;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      padding: 14px 16px;
+      background: #fff;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .composer-hint {
+      margin: 10px 4px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .empty-state {
+      margin: auto;
+      max-width: 520px;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .typing {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+    }
+
+    .typing span {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.35;
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.18s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.36s;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.25; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-2px); }
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1080px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: calc(100vw - 18px);
+        margin: 9px auto;
+        gap: 12px;
+      }
+
+      .sidebar,
+      .main-panel {
+        border-radius: 20px;
+      }
+
+      .hero,
+      .chat-log,
+      .composer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .hero-top {
+        flex-direction: column;
+      }
+
+      .hero-meta {
+        text-align: left;
+      }
+
+      .composer-form {
+        grid-template-columns: 1fr;
+      }
+
+      .bubble {
+        max-width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>TechCorp - Bureau Financier</h1>
-  <p>Interface HTML minimale de secours. Lancez l'application principale avec :</p>
-  <pre>cd devweb && python3 -m pip install -r requirements.txt && python3 -m streamlit run app.py</pre>
-  <ul>
-    <li>Interface principale: <code>devweb/app.py</code> (Streamlit)</li>
-    <li>Serveur d'inférence: URL fournie par l'équipe INFRA</li>
-  </ul>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <p class="brand-kicker">TechCorp Industries</p>
+        <h1>Bureau Financier</h1>
+        <p>Interface web de chat pour interroger le modele deploye par l'equipe INFRA.</p>
+      </div>
+
+      <section class="status-card">
+        <p class="card-title">Connexion</p>
+        <div id="status-pill" class="status-pill">
+          <span class="status-dot"></span>
+          <span id="status-text">Verification du serveur...</span>
+        </div>
+        <p id="status-model" class="meta">Modele par defaut : {{ default_model }}</p>
+        <p id="status-url" class="meta">URL : {{ default_url }}</p>
+      </section>
+
+      <section class="settings-card">
+        <p class="card-title">Parametres</p>
+        <label for="api-url">URL serveur</label>
+        <input id="api-url" type="text" value="{{ default_url }}">
+
+        <label for="model-select">Modele</label>
+        <select id="model-select">
+          <option value="{{ default_model }}">{{ default_model }}</option>
+        </select>
+
+        <button id="refresh-button" type="button" class="secondary-button">Rafraichir le statut</button>
+        <button id="reset-button" type="button" class="secondary-button">Nouvelle conversation</button>
+      </section>
+
+      <section class="examples-card">
+        <p class="card-title">Questions rapides</p>
+        <div class="examples-list">
+          {% for example in examples %}
+          <button type="button" class="example-button" data-example="{{ example }}">{{ example }}</button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="helper-card">
+        <p class="card-title">Mode d'emploi</p>
+        <p class="helper">API cible : Ollama-compatible via <code>/api/chat</code>.</p>
+        <p class="helper">Modele attendu : Phi-3.5-Financial ou tout autre nom fourni par INFRA.</p>
+      </section>
+    </aside>
+
+    <main class="main-panel">
+      <header class="hero">
+        <div class="hero-top">
+          <div>
+            <h2>Chat professionnel en direct</h2>
+            <p>Le site demande une vraie interface conversationnelle. Cette page dialogue avec le serveur d'inference configure, conserve l'historique court, et permet de tester le modele financier en temps reel.</p>
+          </div>
+          <div class="hero-meta">
+            <div>Session web</div>
+            <div>{{ generated_at }}</div>
+          </div>
+        </div>
+      </header>
+
+      <section id="chat-log" class="chat-log">
+        <div class="empty-state" id="empty-state">
+          Le chat est pret. Posez une question financiere ou utilisez une suggestion a gauche.
+        </div>
+      </section>
+
+      <footer class="composer">
+        <form id="composer-form" class="composer-form">
+          <div>
+            <label for="message-input">Votre question</label>
+            <textarea id="message-input" placeholder="Exemple : Quel est l'interet d'un ETF monde pour diversifier un portefeuille ?"></textarea>
+          </div>
+          <button id="send-button" type="submit">Envoyer</button>
+        </form>
+        <p class="composer-hint">Le serveur de modele peut prendre quelques secondes a repondre. Gardez des questions courtes si le backend est lent.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const welcomeMessage = {{ welcome|tojson }};
+    const chatLog = document.getElementById("chat-log");
+    const emptyState = document.getElementById("empty-state");
+    const composerForm = document.getElementById("composer-form");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const apiUrlInput = document.getElementById("api-url");
+    const modelSelect = document.getElementById("model-select");
+    const refreshButton = document.getElementById("refresh-button");
+    const resetButton = document.getElementById("reset-button");
+    const statusPill = document.getElementById("status-pill");
+    const statusText = document.getElementById("status-text");
+    const statusModel = document.getElementById("status-model");
+    const statusUrl = document.getElementById("status-url");
+
+    let messages = [{ role: "assistant", content: welcomeMessage }];
+    let online = false;
+
+    function renderMessages() {
+      chatLog.innerHTML = "";
+      if (!messages.length) {
+        chatLog.appendChild(emptyState);
+        return;
+      }
+
+      messages.forEach((message) => {
+        const wrapper = document.createElement("article");
+        wrapper.className = `message ${message.role}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = message.role === "assistant" ? "AI" : "VOUS";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = message.content;
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(bubble);
+        chatLog.appendChild(wrapper);
+      });
+
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function addTypingIndicator() {
+      const wrapper = document.createElement("article");
+      wrapper.className = "message assistant";
+      wrapper.id = "typing-indicator";
+      wrapper.innerHTML = `
+        <div class="avatar">AI</div>
+        <div class="bubble">
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>
+      `;
+      chatLog.appendChild(wrapper);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      document.getElementById("typing-indicator")?.remove();
+    }
+
+    function setBusy(isBusy) {
+      sendButton.disabled = isBusy;
+      messageInput.disabled = isBusy;
+      modelSelect.disabled = isBusy;
+      apiUrlInput.disabled = isBusy;
+      refreshButton.disabled = isBusy;
+      if (!isBusy) {
+        messageInput.focus();
+      }
+    }
+
+    function updateStatus(payload) {
+      online = Boolean(payload.online);
+      statusPill.classList.toggle("offline", !online);
+      statusText.textContent = online ? "Serveur connecte" : "Serveur hors ligne";
+      statusUrl.textContent = `URL : ${payload.api_url || apiUrlInput.value}`;
+
+      if (payload.available_models && payload.available_models.length) {
+        const currentValue = modelSelect.value;
+        modelSelect.innerHTML = "";
+        payload.available_models.forEach((modelName) => {
+          const option = document.createElement("option");
+          option.value = modelName;
+          option.textContent = modelName;
+          modelSelect.appendChild(option);
+        });
+        if (payload.available_models.includes(currentValue)) {
+          modelSelect.value = currentValue;
+        }
+      }
+
+      statusModel.textContent = `Modele : ${modelSelect.value || "indisponible"}`;
+    }
+
+    async function refreshStatus() {
+      try {
+        const response = await fetch(`/api/status?api_url=${encodeURIComponent(apiUrlInput.value.trim())}`);
+        const payload = await response.json();
+        updateStatus(payload);
+      } catch (error) {
+        updateStatus({ online: false, api_url: apiUrlInput.value.trim(), available_models: [] });
+      }
+    }
+
+    async function bootstrap() {
+      try {
+        const response = await fetch("/api/config");
+        const payload = await response.json();
+        apiUrlInput.value = payload.inference_url;
+        modelSelect.innerHTML = "";
+
+        const models = payload.available_models?.length ? payload.available_models : [payload.default_model];
+        models.forEach((modelName) => {
+          const option = document.createElement("option");
+          option.value = modelName;
+          option.textContent = modelName;
+          modelSelect.appendChild(option);
+        });
+        modelSelect.value = payload.default_model;
+        updateStatus({
+          online: payload.online,
+          api_url: payload.inference_url,
+          available_models: models,
+        });
+      } catch (error) {
+        updateStatus({ online: false, api_url: apiUrlInput.value, available_models: [modelSelect.value] });
+      }
+      renderMessages();
+    }
+
+    async function sendMessage(content) {
+      const trimmed = content.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      messages.push({ role: "user", content: trimmed });
+      renderMessages();
+      messageInput.value = "";
+      setBusy(true);
+      addTypingIndicator();
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_url: apiUrlInput.value.trim(),
+            model: modelSelect.value.trim(),
+            messages,
+          }),
+        });
+        const payload = await response.json();
+        removeTypingIndicator();
+        messages.push({
+          role: "assistant",
+          content: payload.reply || payload.error || "Reponse vide.",
+        });
+        renderMessages();
+        await refreshStatus();
+      } catch (error) {
+        removeTypingIndicator();
+        messages.push({
+          role: "assistant",
+          content: "Erreur reseau : impossible de joindre le serveur web ou le backend d'inference.",
+        });
+        renderMessages();
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    composerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await sendMessage(messageInput.value);
+    });
+
+    refreshButton.addEventListener("click", refreshStatus);
+    resetButton.addEventListener("click", () => {
+      messages = [{ role: "assistant", content: welcomeMessage }];
+      renderMessages();
+      messageInput.focus();
+    });
+
+    document.querySelectorAll("[data-example]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await sendMessage(button.dataset.example || "");
+      });
+    });
+
+    apiUrlInput.addEventListener("change", refreshStatus);
+    modelSelect.addEventListener("change", () => {
+      statusModel.textContent = `Modele : ${modelSelect.value || "indisponible"}`;
+    });
+
+    bootstrap();
+  </script>
 </body>
 </html>

@@ -1,33 +1,35 @@
-# TechCorp — Interface chat DEV WEB
+# TechCorp - Interface chat DEV WEB
 
-Interface Streamlit pour interagir avec le modele **Phi-3.5-Financial** via le serveur d'inference deploye par l'equipe INFRA.
+Interface web pour interagir avec le modele **Phi-3.5-Financial** via le serveur d'inference deploye par l'equipe INFRA.
 
 ## Prerequis
 
 - Python 3.9+
-- Serveur d'inference operationnel (Ollama recommande)
-- Modele `phi35-financial` (ou nom fourni par INFRA)
+- Serveur d'inference operationnel
+- Modele `phi35-financial` ou tout autre nom fourni par INFRA
 
 ## Installation
 
 ```bash
 cd devweb
-pip3 install -r requirements.txt
-```
-
-Sur macOS, si `pip3` n'est pas disponible :
-
-```bash
 python3 -m pip install -r requirements.txt
 ```
 
-## Lancement
+## Lancement du site principal
 
 ```bash
-python3 -m streamlit run app.py
+python3 app.py
 ```
 
-L'interface s'ouvre sur **http://localhost:8501**.
+Le site s'ouvre sur **http://localhost:5000**.
+
+## Client Streamlit optionnel
+
+```bash
+python3 -m streamlit run streamlit_app.py
+```
+
+Le client Streamlit reste disponible sur **http://localhost:8501**.
 
 ## Configuration
 
@@ -38,11 +40,13 @@ Variables d'environnement optionnelles :
 | `INFERENCE_URL` | `http://localhost:11434` | URL du serveur d'inference |
 | `INFERENCE_MODEL` | `phi35-financial` | Nom du modele |
 | `MAX_HISTORY` | `20` | Nombre de messages envoyes au modele |
+| `HOST` | `0.0.0.0` | Interface d'ecoute du site Flask |
+| `PORT` | `5000` | Port du site Flask |
 
 Exemple :
 
 ```bash
-INFERENCE_URL=http://192.168.1.10:11434 INFERENCE_MODEL=phi35-financial python3 -m streamlit run app.py
+INFERENCE_URL=http://192.168.1.10:11434 INFERENCE_MODEL=phi35-financial PORT=5000 python3 app.py
 ```
 
 ## Integration INFRA
@@ -57,7 +61,7 @@ Backends supportes :
 | Backend | URL par defaut | Statut |
 |---------|----------------|--------|
 | Ollama | `http://localhost:11434` | Supporte |
-| Triton | `http://localhost:8000` | URL configurable (API Ollama-compatible requise) |
+| Triton | `http://localhost:8000` | URL configurable si une API Ollama-compatible est exposee |
 | Serveur maison | URL fournie par INFRA | URL configurable |
 
 Demandez a l'equipe INFRA :
@@ -70,23 +74,20 @@ Demandez a l'equipe INFRA :
 
 | Probleme | Solution |
 |----------|----------|
-| `pip: command not found` | Utilisez `pip3` ou `python3 -m pip` |
-| Statut "Hors ligne" | Verifiez qu'Ollama tourne : `ollama serve` |
-| Modele introuvable | `ollama list` puis ajustez le nom dans la sidebar |
+| `pip: command not found` | Utilisez `python3 -m pip` |
+| Statut "Hors ligne" | Verifiez que le serveur d'inference tourne |
+| Modele introuvable | Verifiez le nom exact du modele avec l'equipe INFRA |
 | Timeout | Le modele met trop de temps ; reessayez une question plus courte |
 
 ## Structure
 
-```
+```text
 devweb/
-├── app.py              # Interface Streamlit
-├── api/
-│   └── ollama.py       # Client API inference
-├── requirements.txt
-├── .streamlit/
-│   └── config.toml     # Theme TechCorp
-└── templates/
-    └── index.html      # Page HTML de secours
+|-- app.py               # Serveur Flask + routes API chat
+|-- streamlit_app.py     # Client Streamlit conserve en option
+|-- api/
+|   `-- ollama.py        # Client API inference
+|-- requirements.txt
+`-- templates/
+    `-- index.html       # Interface web principale
 ```
-
-Voir le livrable complet : [../LIVRABLE.md](../LIVRABLE.md)
