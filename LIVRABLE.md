@@ -67,17 +67,16 @@ TechCorp Industries confie à notre équipe le redéploiement de **Phi-3.5-Finan
 
 **Choix technique justifié :**
 
-- **Ollama** retenu (vs Triton) : déploiement rapide, compatible hackathon 7h, fonctionne CPU/GPU, API simple
+- **Ollama** retenu : déploiement rapide, compatible hackathon 7h, fonctionne CPU/GPU, API simple
 - **Docker** : reproductible sur toutes les machines de l'équipe, config identique en prod
-- **Triton** : disponible en bonus (`infra/tritton_server/Dockerfile`) si GPU NVIDIA
 
 **Fichiers INFRA :**
 ```
 infra/
 ├── docker-compose.yml       # Orchestration Docker
 ├── ollama_server/Modelfile  # Config modèle financier
-├── tritton_server/Dockerfile # Bonus Triton
 ├── start-docker.bat         # Lancement Docker
+├── setup-ollama.bat         # Ollama local (sans Docker)
 └── README.md                # Doc technique
 ```
 
@@ -98,8 +97,9 @@ infra/
 ```
 devweb/
 ├── app.py              # Interface Streamlit principale
+├── api/ollama.py       # Client API Ollama
 ├── requirements.txt    # Dépendances Python
-└── templates/index.html # Version HTML de secours
+└── .streamlit/config.toml
 ```
 
 **Fonctionnalités interface :**
@@ -275,14 +275,15 @@ HACKATHON-IA/
 ├── infra/                   ← FILIÈRE INFRA
 │   ├── docker-compose.yml
 │   ├── ollama_server/Modelfile
-│   ├── tritton_server/Dockerfile
 │   ├── start-docker.bat
+│   ├── setup-ollama.bat
 │   └── README.md
 │
 ├── devweb/                  ← FILIÈRE DEV WEB
 │   ├── app.py
+│   ├── api/ollama.py
 │   ├── requirements.txt
-│   └── templates/index.html
+│   └── .streamlit/config.toml
 │
 └── data-IA/                 ← FILIÈRE DATA
     ├── data/
@@ -300,11 +301,10 @@ HACKATHON-IA/
 
 | Problème | Solution |
 |----------|----------|
-| `Port 11434 already in use` | `docker compose down` puis relancer. Ne pas lancer `infra/server.py` |
+| `Port 11434 already in use` | `docker compose down` puis relancer. Ne pas lancer Docker + Ollama local en même temps |
 | Sidebar « Hors ligne » | Vérifier Docker : `docker ps` |
 | Pas de réponse / timeout | Attendre 1-2 min (CPU). Ne pas spammer |
 | `Docker not running` | Ouvrir Docker Desktop |
-| Erreur `rendu/devweb` | Utiliser `HACKATHON-IA/devweb` |
 | Modèle introuvable | `docker exec techcorp-ollama-prod ollama create phi35-financial -f /ollama_server/Modelfile` |
 
 ---

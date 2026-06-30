@@ -83,10 +83,8 @@ devweb/
 ├── api/
 │   └── ollama.py       # Client API inference
 ├── requirements.txt
-├── .streamlit/
-│   └── config.toml     # Theme TechCorp
-└── templates/
-    └── index.html      # Page HTML de secours
+└── .streamlit/
+    └── config.toml     # Theme TechCorp
 ```
 
 Voir le livrable complet : [../LIVRABLE.md](../LIVRABLE.md)
