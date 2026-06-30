@@ -1,0 +1,74 @@
+{
+  "train": {
+    "lignes_avant": 256916,
+    "lignes_apres": 246492,
+    "nb_anomalies_signalees": 47,
+    "exemples_anomalies": [
+      {
+        "index": 2894,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 17550,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 21190,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 21233,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 26474,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 27240,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 29057,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 29550,
+        "raisons": [
+          "output trop court"
+        ]
+      },
+      {
+        "index": 40745,
+        "raisons": [
+          "mot suspect: 'http://'"
+        ]
+      },
+      {
+        "index": 43821,
+        "raisons": [
+          "input trop court"
+        ]
+      }
+    ]
+  },
+  "splits_finaux": {
+    "train": 197193,
+    "validation": 24649,
+    "test": 24650
+  }
+}
